@@ -1,0 +1,18 @@
+{
+  "topic": "Clash of Clans visual autonomous attack system feasibility",
+  "date": "2026-10-27",
+  "mode": "deep research with five independent council researchers and cross-review",
+  "scope": "Research only; no gameplay bot, account access, emulator changes, or live automation",
+  "question": "How could screen-based base and army recognition, outcome prediction, attack planning and closed-loop control fit a 15-second scouting decision, and is a 98% threshold defensible?",
+  "user_context": {"current_town_hall":"approximately 13, user uncertain","scope":"all battle modes, eventual all Town Halls/levels","army_flow":"read own base/camp/army before matchmaking, refresh when changed","hardware":"Ryzen 5 4600H, GTX 1650 Ti, 16 GB RAM","platform":"Google Play Games PC preferred; emulator optional"},
+  "assumptions": ["30-second scout pending mode-specific observation", "Exact Town Hall and selected army not confirmed", "Every-match ambition requires separate mode/TH validation", "98% distinguished as destruction, success probability, accuracy and statistical confidence"],
+  "participants": ["partner", "first_principles", "film_room", "empiricist", "insider"],
+  "concurrency": "Three researchers plus chair; independent initial briefs in waves",
+  "provider": "Available native web tools; no paid research service or package installation",
+  "output_location_reason": "Project-local research artifacts respect the authorized workspace and avoid out-of-workspace writes",
+  "validation": {"structure": "All nine checks passed", "citations": "35/35 public URLs accessible; zero suspicious/unverified", "citation_network": "Initial sandbox DNS failed; authorized read-only network retry succeeded", "html": "All checks passed", "pdf": "13 pages rendered and visually reviewed; all 35 reference numbers present", "registries": "35 unique sources and 26 claims checked", "performance": "No hardware/game/model performance benchmark performed"},
+  "independent_researchers_completed": 5,
+  "cross_review_ring_completed": true,
+  "word_count": 6978,
+  "status": "Research complete"
+}

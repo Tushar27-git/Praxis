@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-27",
+  "request": "Quick compare Claude and Codex reports; select valid points by use case and create final combined Markdown",
+  "output": "D:/COC_bot/research/FINAL_RESEARCH.md",
+  "format": "Markdown only",
+  "words": 3747,
+  "cited_sources": 24,
+  "source_reports": [
+    {"path": "D:/COC_bot/research/clash-of-clans-feasibility.md", "bytes": 53478, "sha256": "78f6a1ab31384c4a562e2dc2a56e05356c1354b7c45ea5ce6c7c8c666a130ff3"},
+    {"path": "D:/COC_bot/research/clauderesearch/Clash of Clans Attack-Advisor Bot Feasibility and Architecture.md", "bytes": 21318, "sha256": "51105ebcb34963d53670988dc1559affa9ac85aee94076d3998701e049095bc6"}
+  ],
+  "review": "Reused original five-researcher study and two focused non-author follow-ups: First Principles and Partner; no second five-person investigation",
+  "new_checks": ["Existing CoC detector model card", "Dataset labels/counts/license card", "MyBot v8.1.2 historical maintenance", "ClashGO Mac/Windows applicability", "Official2025mode announcement"],
+  "validation": {
+    "structure": "Passed; optional Counterevidence Register/Claims-Evidence Table heading warnings",
+    "citations": "24/24 URL-accessible;0 suspicious;0 unverified",
+    "reference_integrity": "Body references and bibliography exactly1-24",
+    "scope": "No models downloaded/trained, no actual game or hardware performance tested"
+  },
+  "status": "Complete"
+}

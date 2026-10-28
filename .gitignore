@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.venv/
+tmp/
+scouting-session*.json
+.tools/
+recordings/
+.superpowers/
+output/
+HANDOVER.md
+.env
+.env.*
+!.env.example
+*.log
+*.sqlite3*
+research/*.pdf
+research/*.html

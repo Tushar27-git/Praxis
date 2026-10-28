@@ -205,11 +205,18 @@ class NativeApp:
     def start_attack(self):
         if self.live_stream is None or (self.attack_worker and self.attack_worker.is_alive()):
             self.status.set('Start continuous live capture before a basic-army diagnostic.');return
+        stream=self.live_stream
+        try:
+            frame=stream.latest()
+            if frame is None:raise DeviceError('No video frame received yet.')
+            AdbClient._ready(frame,self.stop)
+        except DeviceError as exc:
+            self.status.set(f'Restart live capture before attacking: {exc}');return
         try:
             from .runtime import AttackRuntime
             from .experience import ExperienceStore
             from .training import LearningCoordinator
-            client=self.client(); stream=self.live_stream
+            client=self.client()
             if self.experience_store is None:
                 self.experience_store=ExperienceStore(ROOT/'recordings/experience')
                 self.learning=LearningCoordinator(self.experience_store,ROOT/'recordings/models')
@@ -230,6 +237,7 @@ class NativeApp:
         self.record_requested.clear()
         self.status.set("Stopping capture. An in-flight ADB request may take up to five seconds to return.")
         self.stop_button.configure(state="disabled")
+        self.attack_button.configure(state='disabled')
 
     def toggle_compact(self):
         if self.compact.get():
@@ -270,7 +278,7 @@ class NativeApp:
                 self.stats.set(self.stats.get()+" · stopped")
         with self.lock:
             frame,number = self.latest,self.frame_number
-        enabled=self.live_stream is not None and not (self.attack_worker and self.attack_worker.is_alive())
+        enabled=not self.stop.is_set() and self.live_stream is not None and not (self.attack_worker and self.attack_worker.is_alive())
         self.attack_button.configure(state='normal' if enabled else 'disabled')
         if frame and number != self.shown_number:
             self.shown_number = number

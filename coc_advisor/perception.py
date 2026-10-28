@@ -60,6 +60,7 @@ class Perception:
     def __init__(self):
         self.templates={p.stem:np.array(Image.open(p).convert('RGB')) for p in ASSETS.glob('*.png')}
         self.ocr=None
+        self.profile_cache=None
 
     @staticmethod
     def canonical(image): return np.array(image.resize((960,540),Image.Resampling.BILINEAR))
@@ -203,8 +204,12 @@ class Perception:
                 field=im[90:420,150:820]; scores=cv2.matchTemplate(field,template,cv2.TM_CCOEFF_NORMED)
                 _,score,_,(x,y)=cv2.minMaxLoc(scores)
                 if score>.65:o.layout={'townhall_candidate':((150+x+template.shape[1]/2)/960,(90+y+template.shape[0]/2)/540)}
-            lines=self.recognize_lines([im[343:376,210:720]])
-            text,score=lines[0]; normalized=re.sub('[^a-z0-9]','',text.lower())
+            profile=im[343:376,210:720]
+            key=profile.tobytes()
+            # Reuse text only for identical pixels, including unsuccessful reads.
+            if self.profile_cache is None or self.profile_cache[0]!=key:
+                self.profile_cache=(key,self.recognize_lines([profile])[0])
+            text,score=self.profile_cache[1]; normalized=re.sub('[^a-z0-9]','',text.lower())
             match=re.fullmatch(r'townhalllevel(\d{1,2})',normalized)
             if match and score>.8:o.hud['own_th']=int(match.group(1))
         if scene=='result':

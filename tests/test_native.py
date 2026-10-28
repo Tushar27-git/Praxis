@@ -3,6 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 from coc_advisor.native import NativeApp
 from coc_advisor.device import DeviceError
@@ -49,6 +50,14 @@ class NativeUiTests(unittest.TestCase):
         self.app.stop_capture()
         self.assertTrue(self.app.attack_stop.is_set())
 
+    def test_stop_keeps_attack_disabled_during_capture_shutdown(self):
+        self.app.live_stream=object()
+        self.app.attack_button.configure(state='normal')
+        self.app.stop_capture()
+        self.assertEqual(str(self.app.attack_button['state']),'disabled')
+        self.app.poll()
+        self.assertEqual(str(self.app.attack_button['state']),'disabled')
+
     def test_learning_owner_is_reused_across_native_runs(self):
         root=Path(__file__).resolve().parents[1]/'tmp'
         temp=tempfile.TemporaryDirectory(dir=root); self.addCleanup(temp.cleanup)
@@ -57,10 +66,26 @@ class NativeUiTests(unittest.TestCase):
             def __init__(self,*args):calls.append(args[-2:])
             def run(self,timeout):pass
         with patch('coc_advisor.native.ROOT',Path(temp.name)),patch('coc_advisor.runtime.AttackRuntime',Runtime):
-            self.app.live_stream=object()
+            self.app.live_stream=SimpleNamespace(latest=lambda:frame())
             self.app.start_attack(); self.app.attack_worker.join()
             self.app.start_attack(); self.app.attack_worker.join()
         self.assertIs(calls[0][0],calls[1][0]); self.assertIs(calls[0][1],calls[1][1])
+
+    def test_attack_rejects_missing_stale_unknown_and_failed_stream_frames(self):
+        unknown=SimpleNamespace(requested_at=None)
+        unverified=SimpleNamespace(requested_at=0,freshness_verified=False)
+        for value in (None,frame(age=5),unknown,unverified):
+            with self.subTest(value=value),patch('coc_advisor.runtime.AttackRuntime') as runtime:
+                self.app.live_stream=SimpleNamespace(latest=lambda:value)
+                self.app.start_attack()
+                runtime.assert_not_called()
+                self.assertIsNone(self.app.attack_worker)
+                self.assertIn('Restart live capture',self.app.status.get())
+        def disconnected():raise DeviceError('Video stream closed')
+        self.app.live_stream=SimpleNamespace(latest=disconnected)
+        self.app.start_attack()
+        self.assertIsNone(self.app.attack_worker)
+        self.assertIn('Video stream closed',self.app.status.get())
 
     def test_recorder_close_error_cannot_strand_capture_state(self):
         class BrokenRecorder:

@@ -1,6 +1,7 @@
 from pathlib import Path
 import time
 import unittest
+from unittest.mock import Mock
 from PIL import Image
 from coc_advisor.stream import LiveFrame
 from coc_advisor.perception import Perception, GeometryGuard
@@ -44,3 +45,14 @@ class PerceptionTests(unittest.TestCase):
         guard=GeometryGuard(image)
         self.assertTrue(guard.matches(image))
         self.assertFalse(guard.matches(ImageChops.offset(image,40,25)))
+    def test_unchanged_profile_reuses_ocr_but_changed_label_clears_level(self):
+        reader=Perception()
+        reader.recognize_lines=Mock(return_value=[('Town Hall (Level 2)',.95)])
+        frame=self.frame('home.png')
+        self.assertEqual(reader.observe(frame).hud.get('own_th'),2)
+        self.assertEqual(reader.observe(frame).hud.get('own_th'),2)
+        self.assertEqual(reader.recognize_lines.call_count,1)
+        changed=self.frame('home.png'); changed.image.putpixel((300,350),(0,0,0))
+        reader.recognize_lines.return_value=[('Gold Storage (Level 1)',.95)]
+        self.assertNotIn('own_th',reader.observe(changed).hud)
+        self.assertEqual(reader.recognize_lines.call_count,2)

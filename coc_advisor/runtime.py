@@ -9,6 +9,7 @@ from .experience import ExperienceStore
 from .perception import Perception, GeometryGuard
 from .prediction import predict
 from .training import LearningCoordinator
+from .recording import FrameRecorder
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -40,6 +41,20 @@ class AttackRuntime:
         self.max_inputs=max_inputs; self.matchmaking_actions=0
         self.predicted=False
         self.geometry=None
+        self.pause_recorder=None; self.saved_pauses=set()
+
+    def record_pause(self,o):
+        reason=self.controller.reason; key=(o.scene,reason)
+        if (o.scene not in ('home','army','scout','battle')
+                or not (reason.startswith('Paused:') or reason=='Waiting for verified troop counts')
+                or key in self.saved_pauses or len(self.saved_pauses)>=10):return
+        if self.pause_recorder is None:
+            self.pause_recorder=FrameRecorder(ROOT/'recordings/diagnostics')
+        self.pause_recorder.write(o.frame,metadata=dict(scene=o.scene,reason=reason,
+            hud=o.hud,unknown=o.unknown,army=self.controller.army,
+            source_pts_us=getattr(o.frame,'source_pts_us',None),inputs=self.actions))
+        self.saved_pauses.add(key)
+        self.on_status('Pause evidence saved to '+str(self.pause_recorder.directory))
 
     def context(self,o):
         army=self.controller.army
@@ -93,6 +108,7 @@ class AttackRuntime:
                         self.store.finish_battle(self.battle_id,result); self.result=result
                         self.learning.set_battle_active(False); self.learning.schedule(self.battle_id)
                 intents=self.controller.tick(observation)
+                if not intents and not self.stop.is_set():self.record_pause(observation)
                 if observation.scene=='home' and self.controller.finished:
                     self.on_status('Returned home. Result: '+str(self.result or 'previous battle not labeled'))
                     return self.result
@@ -134,6 +150,7 @@ class AttackRuntime:
             self.on_status('Stopped' if self.stop.is_set() else 'Diagnostic timeout; episode kept incomplete')
             return self.result
         finally:
+            if self.pause_recorder:self.pause_recorder.close()
             self.controller.stop(); self.learning.set_battle_active(False)
             if self.owns_learning:self.learning.close(wait=20)
             if self.owns_store:self.store.close()

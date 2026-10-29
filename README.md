@@ -45,6 +45,8 @@ Launch start.cmd, or:
 
 The experimental Run one basic-army attack control is incomplete and can pause or fail. It requires verified TH2/10-gold state, supports only the limited basic-army UI, and has input/time caps. There is no trustworthy 98% prediction or general army/hero/spell strategy.
 
+When that controller pauses on a recognized home, army, scout or battle screen, it automatically saves the first frame for each distinct pause reason, up to ten per run, under `recordings/diagnostics/`. Each PNG has a matching JSON file with the reason, observed counts, army and source timestamp. These local diagnostics help reproduce recognition failures and are excluded from Git.
+
 Game automation is subject to [Supercell's fair-play rules](https://supercell.com/en/safe-and-fair-play/). Emulator choice does not remove those restrictions.
 
 ## Verification and development

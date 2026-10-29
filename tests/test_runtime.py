@@ -5,9 +5,61 @@ from pathlib import Path
 import tempfile
 from unittest.mock import patch
 from coc_advisor.runtime import AttackRuntime
+from coc_advisor.stream import LiveFrame
+from PIL import Image
+import json
+import threading
+import time
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_pause_evidence_is_bounded_and_skips_unrecognized_screens(self):
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]/'tmp') as tmp, patch('coc_advisor.runtime.ROOT',Path(tmp)):
+            runtime=AttackRuntime(None,None)
+            now=time.monotonic()
+            frame=LiveFrame('emulator-5554',Image.new('RGB',(20,20)),1,100000,now,now,now)
+            o=SimpleNamespace(scene='unknown',frame=frame,hud={},unknown=[])
+            try:
+                runtime.controller.reason='Paused: unreadable screen'
+                runtime.record_pause(o)
+                self.assertFalse((Path(tmp)/'recordings/diagnostics').exists())
+                o.scene='army'
+                for i in range(12):
+                    runtime.controller.reason=f'Paused: unreadable card {i}'
+                    runtime.record_pause(o)
+            finally:runtime.run(timeout=0)
+            images=list(Path(tmp).glob('recordings/diagnostics/*/*.png'))
+            self.assertEqual(len(images),10)
+            self.assertEqual(len(list(Path(tmp).glob('recordings/diagnostics/*/*.json'))),10)
+    def test_repeated_pause_saves_one_frame_with_observed_state(self):
+        stop=threading.Event()
+        class Source:
+            def __init__(self):self.sequence=0
+            def latest(self):
+                self.sequence+=1; now=time.monotonic()
+                return LiveFrame('emulator-5554',Image.new('RGB',(960,540),'purple'),self.sequence,self.sequence*100000,now,now,now)
+        class Reader:
+            def __init__(self):self.observations=0
+            def canonical(self,image):
+                import numpy as np
+                return np.array(image)
+            def recognize_lines(self,crops):return []
+            def observe(self,frame):
+                self.observations+=1
+                if self.observations==3:stop.set()
+                return SimpleNamespace(scene='home',frame=frame,buttons={},inventory=[],unknown=['Unreadable title'],hud={},layout=None,result=None,elapsed_ms=0)
+        class Client:
+            def tap_latest(self,*args):raise AssertionError('Paused controller must not send inputs')
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]/'tmp') as tmp, patch('coc_advisor.runtime.ROOT',Path(tmp)):
+            runtime=AttackRuntime(Client(),Source(),stop=stop); runtime.reader=Reader()
+            runtime.run(timeout=2)
+            images=list(Path(tmp).glob('recordings/diagnostics/*/*.png'))
+            self.assertEqual(len(images),1)
+            metadata=json.loads(images[0].with_suffix('.json').read_text(encoding='utf-8'))
+            self.assertEqual(metadata['reason'],'Paused: own Town Hall level not verified')
+            self.assertEqual(metadata['unknown'],['Unreadable title'])
+            self.assertEqual(metadata['source_pts_us'],200000)
+            with Image.open(images[0]) as saved:self.assertEqual(saved.size,(960,540))
     def test_zero_input_cap_never_calls_android(self):
         class Source:
             def __init__(self):self.calls=0

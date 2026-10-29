@@ -61,6 +61,7 @@ class Perception:
         self.templates={p.stem:np.array(Image.open(p).convert('RGB')) for p in ASSETS.glob('*.png')}
         self.ocr=None
         self.profile_cache=None
+        self.count_cache=None
 
     @staticmethod
     def canonical(image): return np.array(image.resize((960,540),Image.Resampling.BILINEAR))
@@ -184,8 +185,12 @@ class Perception:
             edge=patch[:,0:3].mean()
             if slot>=2:break  # Only the two validated basic troop slots are currently supported.
             boxes.append(im[446:470,x+18:x+68])
-        lines=self.recognize_lines(boxes)
-        return [self.number(text) if score>=.65 else None for text,score in lines]
+        key=tuple(crop.tobytes() for crop in boxes)
+        if self.count_cache is None or self.count_cache[0]!=key:
+            lines=self.recognize_lines(boxes)
+            counts=tuple(self.number(text) if score>=.65 else None for text,score in lines)
+            self.count_cache=(key,counts)
+        return list(self.count_cache[1])
 
     def observe(self,frame,previous_state=None):
         start=time.monotonic(); scene,confidence=self.scene(frame.image); im=self.canonical(frame.image)

@@ -54,7 +54,8 @@ class Controller:
                 self.reason='Paused: deployment geometry unknown';return []
             self.entry=tuple(o.layout['entry'])
         remaining=o.hud.get('remaining')
-        if not remaining or len(remaining)!=len(self.army) or any(type(n) is not int or n<0 for n in remaining):
+        if (not remaining or len(remaining)!=len(self.army)
+                or any(type(n) is not int or n<0 or n>troop['count'] for n,troop in zip(remaining,self.army))):
             self.reason='Waiting for verified troop counts';return []
         if self.wait_count is not None:
             if (self.selected is None or remaining[self.selected]>=self.wait_count[self.selected]

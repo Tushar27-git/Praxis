@@ -56,3 +56,20 @@ class PerceptionTests(unittest.TestCase):
         reader.recognize_lines.return_value=[('Gold Storage (Level 1)',.95)]
         self.assertNotIn('own_th',reader.observe(changed).hud)
         self.assertEqual(reader.recognize_lines.call_count,2)
+    def test_troop_count_ocr_reuses_only_identical_count_pixels(self):
+        reader=Perception()
+        reader.recognize_lines=Mock(return_value=[('x20',.95),('x10',.95)])
+        image=reader.canonical(self.frame('scout.png').image)
+        self.assertEqual(reader.troop_counts(image),[20,10])
+        unchanged_counts=image.copy(); unchanged_counts[100,100]=0
+        self.assertEqual(reader.troop_counts(unchanged_counts),[20,10])
+        self.assertEqual(reader.recognize_lines.call_count,1)
+        changed=image.copy(); changed[450,110]=255-changed[450,110]
+        reader.recognize_lines.return_value=[('x17',.95),('?',.2)]
+        self.assertEqual(reader.troop_counts(changed),[17,None])
+        self.assertEqual(reader.recognize_lines.call_count,2)
+        self.assertEqual(reader.troop_counts(changed),[17,None])
+        self.assertEqual(reader.recognize_lines.call_count,2)
+        reader.recognize_lines.return_value=[('x20',.95),('x10',.95)]
+        self.assertEqual(reader.troop_counts(image),[20,10])
+        self.assertEqual(reader.recognize_lines.call_count,3)

@@ -49,3 +49,9 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(c.tick(obs('army',inventory=army,buttons={'army_attack':(.88,.89)})),[])
         c.own_th=13; c.match_cost=10
         self.assertEqual(c.tick(obs('army',inventory=army,buttons={'army_attack':(.88,.89)})),[])
+    def test_remaining_counts_cannot_exceed_observed_army(self):
+        c=Controller(); c.army=[dict(name='barbarian',count=20,level=1),dict(name='archer',count=10,level=1)]
+        c.entry=(.8,.2)
+        for counts in ([21,10],[20,11],[True,10],[-1,10],[None,10]):
+            self.assertEqual(c.tick(obs('battle',hud={'remaining':counts})),[],str(counts))
+        self.assertEqual(c.tick(obs('battle',hud={'remaining':[20,10]}))[0].label,'select_0')

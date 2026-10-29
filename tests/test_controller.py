@@ -29,6 +29,17 @@ class ControllerTests(unittest.TestCase):
     def test_stop_cancels_future_actions(self):
         c=Controller(); c.stop()
         self.assertEqual(c.tick(obs('home',buttons={'home_battle':(.06,.89)})),[])
+    def test_deployment_feedback_requires_selected_count_to_decrease(self):
+        c=Controller(); c.army=[dict(name='barbarian',count=20,level=1),dict(name='archer',count=10,level=1)]
+        c.entry=(.8,.2)
+        o=obs('battle',hud={'remaining':[20,10]})
+        select=c.tick(o)[0]; c.ack(select,True)
+        hold=c.tick(o)[0]; c.ack(hold,True)
+        for counts in ([21,10],[20,9],[19,11]):
+            o.hud['remaining']=counts
+            self.assertEqual(c.tick(o),[],str(counts))
+        o.hud['remaining']=[18,10]
+        self.assertEqual(c.tick(o)[0].label,'deploy_0')
     def test_unknown_own_townhall_requires_profile_before_matchmaking(self):
         c=Controller(); self.assertEqual(c.tick(obs('home',buttons={'home_battle':(.06,.89)})),[])
         action=c.tick(obs('home',buttons={'home_battle':(.06,.89)},layout={'townhall_candidate':(.5,.4)}))[0]

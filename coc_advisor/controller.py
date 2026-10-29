@@ -56,8 +56,10 @@ class Controller:
         remaining=o.hud.get('remaining')
         if not remaining or len(remaining)!=len(self.army) or any(type(n) is not int or n<0 for n in remaining):
             self.reason='Waiting for verified troop counts';return []
-        if self.wait_count==tuple(remaining):
-            self.reason='Waiting for deployment count feedback';return []
+        if self.wait_count is not None:
+            if (self.selected is None or remaining[self.selected]>=self.wait_count[self.selected]
+                    or any(n>before for n,before in zip(remaining,self.wait_count))):
+                self.reason='Waiting for deployment count feedback';return []
         self.wait_count=None
         slot=next((i for i,n in enumerate(remaining) if n>0),None)
         if slot is None:self.reason='All troops deployed; observing result';return []

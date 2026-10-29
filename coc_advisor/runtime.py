@@ -14,12 +14,14 @@ ROOT=Path(__file__).resolve().parents[1]
 
 
 class ResultVerifier:
-    def __init__(self):self.key=None; self.first_pts=None
+    def __init__(self):self.key=None; self.first_pts=None; self.last_pts=None
     def consider(self,o):
-        if o.result is None:return None
-        key=(o.result.get('destruction'),o.result.get('stars'))
         pts=getattr(o.frame,'source_pts_us',None)
-        if pts is None:return None
+        if o.result is None or pts is None or (self.last_pts is not None and pts<self.last_pts):
+            self.key=None; self.first_pts=None; self.last_pts=None
+            return None
+        self.last_pts=pts
+        key=(o.result.get('destruction'),o.result.get('stars'))
         if key!=self.key:self.key=key; self.first_pts=pts; return None
         if pts-self.first_pts<200000:return None
         return dict(o.result,verified=True)
@@ -54,16 +56,19 @@ class AttackRuntime:
                     controller_version='basic-v1',unsupported=['Enemy TH and unclassified defences remain unknown'])
 
     def run(self,timeout=360):
-        started=time.monotonic(); last_sequence=None; last_status=0; result_seen=0
+        started=time.monotonic(); last_sequence=None; last_status=0; result_seen=0; warmed=False
         try:
             self.learning.set_battle_active(True)
-            # Warm recognition before gameplay; this is not performed per battle frame.
-            self.reader.recognize_lines([self.reader.canonical(self.stream.latest().image)[0:30,0:100]])
             while not self.stop.is_set() and time.monotonic()-started<timeout:
                 frame=self.stream.latest()
                 if frame is None or frame.sequence==last_sequence:self.stop.wait(.01);continue
+                if not warmed:
+                    self.reader.recognize_lines([self.reader.canonical(frame.image)[0:30,0:100]])
+                    warmed=True
+                    continue
                 last_sequence=frame.sequence
                 observation=self.reader.observe(frame); self.last_observation=observation
+                verified=self.verifier.consider(observation)
                 if observation.scene in ('scout','battle') and self.controller.army:
                     observation.hud['remaining']=observation.hud.get('remaining',[])[:len(self.controller.army)]
                 if observation.scene=='scout' and observation.layout:
@@ -80,7 +85,6 @@ class AttackRuntime:
                     self.store.record_prediction(self.battle_id,forecast); self.predicted=True
                 if observation.scene=='result':
                     result_seen+=1
-                    verified=self.verifier.consider(observation)
                     if self.battle_id and self.result is None:
                         if verified is None and result_seen<5:self.stop.wait(.2);continue
                         result=verified or dict(destruction=None,stars=None,verified=False,reason='Unreadable terminal result')
